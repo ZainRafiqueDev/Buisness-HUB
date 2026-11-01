@@ -28,6 +28,13 @@ export async function readDB(biz: string): Promise<DB> {
   }
 }
 
+export async function hasDB(biz: string) {
+  return fs.access(file(biz)).then(
+    () => true,
+    () => false,
+  );
+}
+
 // Serialize writes so two quick requests don't overwrite each other.
 export function updateDB<T>(biz: string, fn: (db: DB) => T): Promise<T> {
   const run = queue.then(async () => {

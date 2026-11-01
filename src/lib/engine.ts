@@ -13,7 +13,7 @@ interface Ctx {
 const DAY = 86_400_000;
 const RANK: LeadStatus[] = ["new", "engaged", "booked", "customer"];
 export const HOT_SCORE = 40;
-const VIP_SPEND = 100;
+const VIP_SPEND = 150;
 
 const on = (c: Ctx, wf: string) => c.biz.workflows.includes(wf) && !c.db.disabled.includes(wf);
 
@@ -296,9 +296,8 @@ function purchase(c: Ctx, i: { checkoutId: string }) {
   return order;
 }
 
-// Moves the clock forward so scheduled messages visibly "send".
-function advance(c: Ctx, i: { days?: number }) {
-  c.db.clockDays += i.days ?? 1;
+// Marks every scheduled message whose time has come as sent.
+function processDue(c: Ctx) {
   const now = nowMs(c.db);
   let sent = 0;
   for (const e of c.db.events) {
@@ -309,7 +308,13 @@ function advance(c: Ctx, i: { days?: number }) {
     }
   }
   c.db.events.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return { sent, clockDays: c.db.clockDays };
+  return sent;
+}
+
+// Moves the clock forward so scheduled messages visibly "send".
+function advance(c: Ctx, i: { days?: number }) {
+  c.db.clockDays += i.days ?? 1;
+  return { sent: processDue(c), clockDays: c.db.clockDays };
 }
 
 function toggle(c: Ctx, i: { workflow: string }) {
@@ -319,12 +324,112 @@ function toggle(c: Ctx, i: { workflow: string }) {
 
 function reset(c: Ctx) {
   Object.assign(c.db, emptyDB());
+  seedHistory(c);
   return { ok: true };
 }
 
+const SEED_PEOPLE = [
+  "Olivia Bennett", "Liam Carter", "Ava Morales", "Noah Kim", "Sophia Patel", "Ethan Brooks", "Mia Thompson", "Lucas Wright",
+  "Isabella Nguyen", "Mason Reed", "Amelia Hughes", "James Ortiz", "Harper Collins", "Benjamin Shah", "Evelyn Foster", "Henry Walsh",
+  "Abigail Stone", "Alexander Price", "Emily Chen", "Daniel Rossi", "Ella Murphy", "Samuel Grant", "Grace Kelly", "Leo Fischer",
+  "Chloe Martin", "Jack Turner", "Zoe Ramirez", "Owen Clarke", "Layla Hassan", "Ryan Doyle",
+];
+
+// Deterministic so each business always opens with the same believable month.
+function rng(seed: string) {
+  let h = 1779033703 ^ seed.length;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 3432918353);
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+const hourSlot = (ms: number, hour: number) => {
+  const d = new Date(ms);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+};
+
+// Replays ~30 days of visitor journeys at their real dates, so timestamps, sent
+// emails, pipeline stages and reports all line up with each other.
+function seedHistory(c: Ctx) {
+  const r = rng(c.biz.id);
+  const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
+  const results = Object.keys(c.biz.quiz.results);
+  const domains = ["gmail.com", "outlook.com", "icloud.com", "yahoo.com", "proton.me"];
+  const paidServices = c.biz.services.filter((s) => s.price > 0);
+  const futureSlots = slotsForNextDays();
+  const total = 26;
+
+  for (let n = 0; n < total; n++) {
+    const name = SEED_PEOPLE[n];
+    const [first, last] = name.toLowerCase().split(" ");
+    const p = { name, email: `${first}.${last}@${pick(domains)}`, consent: r() > 0.12 };
+    const daysAgo = 30 - (n * 29) / total - r() * 0.8;
+    c.db.clockDays = -daysAgo;
+    const later = (days: number) => {
+      c.db.clockDays = Math.min(0, c.db.clockDays + days);
+      processDue(c);
+    };
+    const kind = r();
+
+    try {
+    if (kind < 0.16) {
+      captureLead(c, { ...p, source: "lead form", interest: "newsletter" });
+    } else if (kind < 0.3) {
+      const { lead } = quiz(c, { ...p, result: pick(results) });
+      if (r() > 0.5) chat(c, { leadId: lead.id, message: pick(c.biz.starters) });
+    } else if (kind < 0.5) {
+      const { lead } = quiz(c, { ...p, result: pick(results) });
+      if (r() > 0.4) chat(c, { leadId: lead.id, message: pick(c.biz.starters) });
+      later(r() * 2);
+      const co = startCheckout(c, { ...p, sku: pick(c.biz.catalog).sku });
+      purchase(c, { checkoutId: co.id });
+    } else if (kind < 0.6) {
+      // Researched, asked the assistant, then left at checkout: the classic hot lead.
+      const { lead } = quiz(c, { ...p, result: pick(results) });
+      chat(c, { leadId: lead.id, message: pick(c.biz.starters) });
+      later(r() * 0.5);
+      startCheckout(c, { ...p, sku: pick(c.biz.catalog).sku });
+    } else if (kind < 0.68) {
+      const co = startCheckout(c, { ...p, sku: pick(c.biz.catalog).sku });
+      later(1.3);
+      if (c.db.clockDays < 0) purchase(c, { checkoutId: co.id });
+    } else if (kind < 0.78) {
+      const lead = captureLead(c, { ...p, source: "ai assistant", interest: "question" });
+      chat(c, { leadId: lead.id, message: pick(c.biz.starters) });
+      if (r() > 0.6) chat(c, { leadId: lead.id, message: "Do you offer a student discount?" });
+    } else if (daysAgo > 3) {
+      const svc = paidServices.length && r() > 0.3 ? pick(paidServices) : c.biz.services[0];
+      const slot = hourSlot(nowMs(c.db) + (1 + Math.floor(r() * 2)) * DAY, pick([10, 13, 16]));
+      const b = book(c, { ...p, slot, service: svc.id });
+      later((new Date(slot).getTime() - nowMs(c.db)) / DAY + 0.1);
+      if (c.db.clockDays < 0) completeSession(c, { bookingId: b.id });
+    } else if (futureSlots.length) {
+      book(c, { ...p, slot: futureSlots.shift()!, service: pick(c.biz.services).id });
+    }
+    } catch {
+      // A rare slot collision just skips that visitor; the rest of the month still plays out.
+    }
+    processDue(c);
+  }
+  c.db.clockDays = 0;
+  // A couple of fresh bookings so the calendar always has something coming up.
+  for (const name of SEED_PEOPLE.slice(total, total + 2)) {
+    if (!futureSlots.length) break;
+    const [first, last] = name.toLowerCase().split(" ");
+    c.db.clockDays = -0.2 - r() * 0.5;
+    book(c, { name, email: `${first}.${last}@${pick(domains)}`, consent: true, slot: futureSlots.splice(2, 1)[0] ?? futureSlots.shift()!, service: pick(c.biz.services).id });
+  }
+  c.db.clockDays = 0;
+  processDue(c);
+}
+
 const PEOPLE = [
-  ["Olivia Bennett", "olivia.bennett"], ["Liam Carter", "liam.c"], ["Ava Morales", "ava.morales"], ["Noah Kim", "noahkim"],
-  ["Sophia Patel", "sophia.p"], ["Ethan Brooks", "ebrooks"], ["Mia Thompson", "mia.t"], ["Lucas Wright", "lucas.wright"],
+  ["Nora Bailey", "nora.bailey"], ["Theo Harris", "theo.h"], ["Ivy Coleman", "ivy.coleman"], ["Felix Moreno", "felixm"],
+  ["Ruby Jensen", "ruby.j"], ["Adam Novak", "anovak"], ["Hazel Brooks", "hazel.b"], ["Caleb Ward", "caleb.ward"],
 ];
 
 // Plays out a realistic mix of visitor journeys so the CRM and reports have activity to show.

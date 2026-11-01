@@ -26,7 +26,11 @@ npx next start -p 3100
 ```
 
 Open http://localhost:3100. If you changed code, run `npm run build` first.
-Before the call, press **Reset** on each business's CRM page (or leave them empty and use "Simulate visitors").
+Each business opens with about a month of history: ~28 contacts, orders, bookings (including upcoming ones), hot leads,
+VIPs, abandoned checkouts and sent follow-ups. **Reset** on a CRM page restores that starting month.
+To regenerate everything, stop the server, delete the `data` folder and start it again.
+
+The front page (`/`) is the animated landing page (Motion + GSAP). Its counters are the real totals across all three businesses.
 
 Keep two tabs open: the business **Website** and its **CRM**.
 

@@ -61,3 +61,34 @@ h3 {
 .muted {
   @apply text-stone-600;
 }
+
+.text-gradient {
+  background: linear-gradient(100deg, #5eead4 0%, #f472b6 50%, #fb923c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.shiny {
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.55) 35%, #fff 50%, rgba(255, 255, 255, 0.55) 65%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shine 3.5s linear infinite;
+}
+
+@keyframes shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shiny {
+    animation: none;
+  }
+}

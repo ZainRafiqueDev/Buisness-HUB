@@ -2,7 +2,10 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import ChatWidget from "@/components/ChatWidget";
+import CountUp from "@/components/fx/CountUp";
+import Reveal from "@/components/fx/Reveal";
 import { getBusiness, type Business, type Item } from "@/lib/businesses";
 import { act, fmtSlot, getState, money, saveVisitor, useVisitor, type Visitor } from "@/lib/client";
 import type { Lead } from "@/lib/types";
@@ -33,16 +36,18 @@ export default function Site() {
 
       <section id="top" className="bg-accent-soft">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 md:grid-cols-[1.15fr_1fr] md:py-20">
-          <div>
-            <p className="label">{biz.hero.eyebrow}</p>
-            <h1 className="mt-4 text-4xl font-bold md:text-[3.2rem]">{biz.hero.title}</h1>
-            <p className="mt-5 text-xl text-stone-700">{biz.hero.sub}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+          <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.12 } } }}>
+            <motion.p variants={rise} className="label">{biz.hero.eyebrow}</motion.p>
+            <motion.h1 variants={rise} className="mt-4 text-4xl font-bold md:text-[3.2rem]">{biz.hero.title}</motion.h1>
+            <motion.p variants={rise} className="mt-5 text-xl text-stone-700">{biz.hero.sub}</motion.p>
+            <motion.div variants={rise} className="mt-8 flex flex-wrap gap-3">
               <a href={biz.id === "ember" ? "#shop" : "#book"} className="btn">{biz.hero.primary}</a>
               <a href={biz.id === "ember" ? "#quiz" : "#shop"} className="btn-ghost">{biz.hero.secondary}</a>
-            </div>
-          </div>
-          <LeadMagnet biz={biz} visitor={visitor} />
+            </motion.div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 30, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.35, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
+            <LeadMagnet biz={biz} visitor={visitor} />
+          </motion.div>
         </div>
       </section>
 
@@ -50,7 +55,7 @@ export default function Site() {
         <div className="mx-auto grid max-w-6xl grid-cols-3 gap-4 px-5 py-8 text-center">
           {biz.stats.map((s) => (
             <div key={s.label}>
-              <div className="text-2xl font-bold md:text-3xl">{s.value}</div>
+              <div className="text-2xl font-bold md:text-3xl"><CountUp value={s.value} /></div>
               <div className="text-[15px] text-stone-600">{s.label}</div>
             </div>
           ))}
@@ -60,19 +65,29 @@ export default function Site() {
       <Quiz biz={biz} visitor={visitor} onBuy={setCheckoutItem} />
 
       <section id="book" className="bg-stone-50">
-        <div className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal className="mx-auto max-w-6xl px-5 py-16">
           <h2 className="text-3xl font-bold">{biz.booking.title}</h2>
           <p className="mt-2 text-lg text-stone-600">{biz.booking.text}</p>
           <Booking biz={biz} visitor={visitor} />
-        </div>
+        </Reveal>
       </section>
 
       <section id="shop" className="mx-auto max-w-6xl px-5 py-16">
-        <h2 className="text-3xl font-bold">{biz.shop.title}</h2>
-        <p className="mt-2 text-lg text-stone-600">{biz.shop.text}</p>
+        <Reveal>
+          <h2 className="text-3xl font-bold">{biz.shop.title}</h2>
+          <p className="mt-2 text-lg text-stone-600">{biz.shop.text}</p>
+        </Reveal>
         <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {biz.catalog.map((item) => (
-            <div key={item.sku} className="card flex flex-col p-6">
+          {biz.catalog.map((item, i) => (
+            <motion.div
+              key={item.sku}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -6 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="card flex flex-col p-6 transition-shadow hover:shadow-xl"
+            >
               <div className="grid h-36 place-items-center rounded-xl bg-accent-soft text-5xl font-bold text-accent/70">{item.title.charAt(0)}</div>
               <span className="mt-4 text-sm font-semibold text-accent">{item.badge}</span>
               <h3 className="mt-1 text-xl font-bold">{item.title}</h3>
@@ -86,23 +101,31 @@ export default function Site() {
                   {item.kind === "course" ? "Enroll" : item.kind === "membership" ? "Join" : "Add to cart"}
                 </button>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
 
       <section className="bg-stone-900 text-white">
         <div className="mx-auto grid max-w-6xl gap-6 px-5 py-16 md:grid-cols-2">
-          {biz.testimonials.map((t) => (
-            <figure key={t.name} className="rounded-2xl bg-white/5 p-7">
+          {biz.testimonials.map((t, i) => (
+            <motion.figure
+              key={t.name}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: i * 0.15 }}
+              className="rounded-2xl bg-white/5 p-7"
+            >
               <div className="text-amber-300">★★★★★</div>
               <blockquote className="mt-3 text-xl leading-relaxed">“{t.quote}”</blockquote>
               <figcaption className="mt-4 font-semibold text-stone-300">{t.name}</figcaption>
-            </figure>
+            </motion.figure>
           ))}
         </div>
       </section>
 
+      <Reveal>
       <section id="faq" className="mx-auto max-w-3xl px-5 py-16">
         <h2 className="text-3xl font-bold">Frequently asked questions</h2>
         <div className="mt-6 divide-y divide-stone-200 border-y border-stone-200">
@@ -118,6 +141,7 @@ export default function Site() {
         </div>
         <p className="mt-6 text-stone-600">Still have a question? Use the chat in the corner. It answers instantly.</p>
       </section>
+      </Reveal>
 
       <footer className="border-t border-stone-200 bg-stone-50">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-[15px] text-stone-600">
@@ -131,6 +155,11 @@ export default function Site() {
     </main>
   );
 }
+
+const rise = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] as const } },
+};
 
 function ContactFields({ v, setV }: { v: Visitor; setV: (v: Visitor) => void }) {
   return (
@@ -213,7 +242,7 @@ function Quiz({ biz, visitor, onBuy }: { biz: Business; visitor: Visitor; onBuy:
 
   return (
     <section id="quiz" className="mx-auto max-w-6xl px-5 py-16">
-      <div className="card grid gap-10 p-8 md:grid-cols-2 md:p-10">
+      <Reveal className="card grid gap-10 p-8 md:grid-cols-2 md:p-10">
         <div>
           <p className="label">Quick quiz</p>
           <h2 className="mt-2 text-3xl font-bold">{biz.quiz.title}</h2>
@@ -274,7 +303,7 @@ function Quiz({ biz, visitor, onBuy }: { biz: Business; visitor: Visitor; onBuy:
             </form>
           )}
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

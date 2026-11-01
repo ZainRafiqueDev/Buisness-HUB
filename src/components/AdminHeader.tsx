@@ -41,7 +41,7 @@ export default function AdminHeader({ biz, title, text, state, refresh }: { biz:
           className="btn-ghost btn-sm"
           disabled={!!busy}
           onClick={() => {
-            if (confirm("Clear all contacts, orders and activity for this business?")) run("reset", "reset");
+            if (confirm("Restore this business to its starting data? Changes you made will be removed.")) run("reset", "reset");
           }}
         >
           Reset

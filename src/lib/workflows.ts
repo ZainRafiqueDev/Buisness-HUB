@@ -69,7 +69,7 @@ export const WORKFLOWS: Record<string, WorkflowDef> = {
   vip: {
     id: "vip",
     name: "VIP customer recognition",
-    trigger: "Customer spends $100 or more in total",
+    trigger: "Customer spends $150 or more in total",
     steps: ["Tag as VIP", "Notify the team", "Send a personal thank-you with early access"],
     platforms: ["crm", "team", "email"],
   },

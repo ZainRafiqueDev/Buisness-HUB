@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getBusiness, slotsForNextDays } from "@/lib/businesses";
 import { runAction } from "@/lib/engine";
-import { nowIso, readDB } from "@/lib/store";
+import { hasDB, nowIso, readDB } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ const NEEDS_EMAIL = new Set(["lead", "quiz", "book", "checkout"]);
 export async function GET(_req: Request, { params }: Params) {
   const { biz, action } = await params;
   if (action !== "state" || !getBusiness(biz)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await hasDB(biz))) await runAction(biz, "reset", {});
   const db = await readDB(biz);
   const taken = new Set(db.bookings.filter((b) => b.status === "upcoming").map((b) => b.slot));
   return NextResponse.json({ ...db, now: nowIso(db), slots: slotsForNextDays().filter((s) => !taken.has(s)) });
