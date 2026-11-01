@@ -1,103 +1,234 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import ChatWidget from "@/components/ChatWidget";
+import { BUSINESS, CATALOG, SERVICES } from "@/lib/catalog";
+import { fmtSlot, getState, loadVisitor, post, saveVisitor, type Visitor } from "@/lib/client";
+import type { Lead } from "@/lib/types";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [visitor, setVisitor] = useState<Visitor>({ name: "", email: "" });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    const sync = () => setVisitor(loadVisitor());
+    sync();
+    window.addEventListener("visitor", sync);
+    return () => window.removeEventListener("visitor", sync);
+  }, []);
+
+  return (
+    <main>
+      <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-2">
+        <div>
+          <p className="mb-3 text-sm font-medium uppercase tracking-wide text-emerald-700">Coaching · Courses · Tools</p>
+          <h1 className="text-4xl font-semibold leading-tight md:text-5xl">Plan calmer weeks. Focus on what matters.</h1>
+          <p className="mt-4 text-lg text-stone-600">{BUSINESS.tagline}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="#book" className="btn">Book a free discovery call</a>
+            <a href="#shop" className="btn-ghost">Explore courses</a>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+        <LeadMagnet visitor={visitor} />
+      </section>
+
+      <section id="book" className="border-y border-stone-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-14">
+          <h2 className="text-2xl font-semibold">Book a session</h2>
+          <p className="mt-1 text-stone-600">Pick a time that suits you. Confirmation and reminders arrive by email.</p>
+          <Booking visitor={visitor} />
+        </div>
+      </section>
+
+      <section id="shop" className="mx-auto max-w-6xl px-4 py-14">
+        <h2 className="text-2xl font-semibold">Courses & products</h2>
+        <p className="mt-1 text-stone-600">Courses are delivered in the member area; the planner ships from our store.</p>
+        <Shop visitor={visitor} />
+      </section>
+
+      <footer className="border-t border-stone-200 py-8 text-center text-xs text-stone-500">
+        Northlight Coaching is a fictional business created for this demo.
       </footer>
-    </div>
+      <ChatWidget />
+    </main>
+  );
+}
+
+function LeadMagnet({ visitor }: { visitor: Visitor }) {
+  const [v, setV] = useState(visitor);
+  const [consent, setConsent] = useState(true);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    setV(visitor);
+  }, [visitor]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    try {
+      const lead = await post<Lead>("/api/leads", { ...v, interest: "checklist", source: "lead magnet", consent });
+      saveVisitor({ ...v, leadId: lead.id });
+      setMsg(`Sent! Check ${lead.email} for your Focus checklist.`);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="card space-y-3 p-6">
+      <div className="text-xs font-medium uppercase tracking-wide text-stone-500">Free download</div>
+      <h3 className="text-xl font-semibold">The 10-minute Weekly Focus Checklist</h3>
+      <p className="text-sm text-stone-600">The same checklist our clients use every Monday morning.</p>
+      <input className="input" placeholder="First name" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+      <input className="input" placeholder="Email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
+      <label className="flex items-start gap-2 text-xs text-stone-500">
+        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
+        Send me the checklist and occasional helpful emails. Unsubscribe anytime.
+      </label>
+      {err && <div className="text-sm text-red-600">{err}</div>}
+      {msg ? <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">✓ {msg}</div> : <button className="btn w-full">Get the checklist</button>}
+    </form>
+  );
+}
+
+function Booking({ visitor }: { visitor: Visitor }) {
+  const [slots, setSlots] = useState<string[]>([]);
+  const [service, setService] = useState(SERVICES[0].id);
+  const [slot, setSlot] = useState<string>();
+  const [v, setV] = useState(visitor);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    setV(visitor);
+  }, [visitor]);
+  useEffect(() => {
+    getState().then((s) => setSlots(s.slots));
+  }, [msg]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    try {
+      const b = await post<{ leadId: string }>("/api/bookings", { ...v, slot, service, consent: true });
+      saveVisitor({ ...v, leadId: b.leadId });
+      setMsg(`Booked for ${fmtSlot(slot!)}. Confirmation sent to ${v.email}.`);
+      setSlot(undefined);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-6 grid gap-6 md:grid-cols-[1fr_320px]">
+      <div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {SERVICES.map((s) => (
+            <button
+              type="button"
+              key={s.id}
+              onClick={() => setService(s.id)}
+              className={`rounded-lg border px-3 py-2 text-sm ${service === s.id ? "border-emerald-700 bg-emerald-50 text-emerald-900" : "border-stone-300"}`}
+            >
+              {s.title} · {s.price ? `$${s.price}` : "Free"}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {slots.slice(0, 12).map((s) => (
+            <button
+              type="button"
+              key={s}
+              onClick={() => setSlot(s)}
+              className={`rounded-lg border px-3 py-2 text-sm ${slot === s ? "border-emerald-700 bg-emerald-700 text-white" : "border-stone-300 hover:bg-stone-50"}`}
+            >
+              {fmtSlot(s)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="card space-y-3 p-5">
+        <div className="text-sm text-stone-600">{slot ? `Selected: ${fmtSlot(slot)}` : "Choose a time on the left"}</div>
+        <input className="input" placeholder="Name" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+        <input className="input" placeholder="Email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
+        {err && <div className="text-sm text-red-600">{err}</div>}
+        {msg && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">✓ {msg}</div>}
+        <button className="btn w-full" disabled={!slot}>Confirm booking</button>
+      </div>
+    </form>
+  );
+}
+
+function Shop({ visitor }: { visitor: Visitor }) {
+  const [checkout, setCheckout] = useState<(typeof CATALOG)[number]>();
+  const [v, setV] = useState(visitor);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    setV(visitor);
+  }, [visitor]);
+
+  async function pay(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    try {
+      const o = await post<{ id: string; leadId: string }>("/api/purchase", { ...v, sku: checkout!.sku });
+      saveVisitor({ ...v, leadId: o.leadId });
+      setMsg(
+        checkout!.kind === "course"
+          ? `Order ${o.id} paid. Course access is ready, login details sent to ${v.email}.`
+          : `Order ${o.id} paid. We'll email tracking when it ships.`,
+      );
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  return (
+    <>
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        {CATALOG.map((c) => (
+          <div key={c.sku} className="card flex flex-col p-5">
+            <span className={`w-fit rounded-full px-2 py-0.5 text-[11px] font-medium ${c.kind === "course" ? "bg-violet-100 text-violet-800" : "bg-sky-100 text-sky-800"}`}>
+              {c.kind === "course" ? "Online course · Kajabi" : "Product · Shopify"}
+            </span>
+            <h3 className="mt-3 font-semibold">{c.title}</h3>
+            <p className="mt-1 flex-1 text-sm text-stone-600">{c.blurb}</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-lg font-semibold">${c.price}</span>
+              <button className="btn" onClick={() => { setCheckout(c); setMsg(""); setErr(""); }}>
+                {c.kind === "course" ? "Enroll" : "Buy"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {checkout && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setCheckout(undefined)}>
+          <form onSubmit={pay} onClick={(e) => e.stopPropagation()} className="card w-full max-w-md space-y-3 p-6">
+            <div className="text-xs font-medium uppercase tracking-wide text-stone-500">Checkout (simulated Shopify)</div>
+            <div className="flex justify-between font-semibold">
+              <span>{checkout.title}</span>
+              <span>${checkout.price}</span>
+            </div>
+            {msg ? (
+              <>
+                <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">✓ {msg}</div>
+                <button type="button" className="btn-ghost w-full" onClick={() => setCheckout(undefined)}>Close</button>
+              </>
+            ) : (
+              <>
+                <input className="input" placeholder="Name" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+                <input className="input" placeholder="Email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
+                <div className="rounded-lg border border-dashed border-stone-300 p-3 text-xs text-stone-500">
+                  Payment step skipped in the demo. In production this is Shopify&apos;s hosted checkout, so card data never touches our site.
+                </div>
+                {err && <div className="text-sm text-red-600">{err}</div>}
+                <button className="btn w-full">Pay ${checkout.price} (demo)</button>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+    </>
   );
 }
